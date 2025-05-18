@@ -11,13 +11,14 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 // Add CORS
-builder.Services.AddCors(opt=>
+builder.Services.AddCors(options =>
 {
-    opt.AddPolicy("AllowAllOrigins",
-        builder => builder.AllowAnyOrigin()// Replace with your Blazor WASM URL
-        .AllowAnyMethod()
-        .AllowAnyHeader());
-
+    options.AddPolicy("CorsPolicy",
+        policy => policy
+            .WithOrigins("http://localhost:3000", "http://192.168.1.69:3000") // Update with your React app URL
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
 });
 
 // Add SignalR
@@ -35,9 +36,9 @@ builder.Services.AddScoped<IAlertRepository, AlertRepository>();
 // Register Arduino service as a singleton
 
 builder.Services.AddSingleton<ArduinoService>();
-builder.Services.AddHostedService<ArduinoService>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<ArduinoService>());
 
-
+//builder.Services.AddHostedService<ArduinoService>();
 
 var app = builder.Build();
 
@@ -52,7 +53,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAllOrigins");
+app.UseCors("CorsPolicy");
 app.UseAuthorization();
 
 app.MapControllers();

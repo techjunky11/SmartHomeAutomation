@@ -12,7 +12,6 @@ namespace SmartHomeAutomation.Api.Models
         public bool DoorStatus { get; set; }
         public bool FanStatus { get; set; }
         public bool LightStatus { get; set; }
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; }
     }
-
 }

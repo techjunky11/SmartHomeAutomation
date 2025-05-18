@@ -27,7 +27,7 @@ namespace SmartHomeAutomation.Api.Service
             _logger = logger;
             _hubContext = hubContext;
             _scopeFactory = scopeFactory;
-            _portName = configuration["Arduino:PortName"] ?? "COM3";
+            _portName = configuration["Arduino:PortName"] ?? "COM16";
             _baudRate = int.Parse(configuration["Arduino:BaudRate"] ?? "115200");
         }
 
@@ -118,9 +118,15 @@ namespace SmartHomeAutomation.Api.Service
                         case "sensor_data":
                             await ProcessSensorData(root);
                             break;
+
+                        case "device_status": // Add this case
+                            await ProcessDeviceStatus(root);
+                            break;
+
                         case "system_status":
                             await ProcessSystemStatus(root);
                             break;
+
                         case "alert":
                             await ProcessAlert(root);
                             break;
@@ -130,6 +136,31 @@ namespace SmartHomeAutomation.Api.Service
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error parsing JSON data: {JsonData}", jsonData);
+            }
+        }
+
+        // Add this method to handle device status messages
+        private async Task ProcessDeviceStatus(JsonElement data)
+        {
+            try
+            {
+                var deviceStatus = new DeviceStatus
+                {
+                    DoorStatus = data.GetProperty("DoorStatus").GetBoolean(),
+                    FanStatus = data.GetProperty("FanStatus").GetBoolean(),
+                    LightStatus = data.GetProperty("LightStatus").GetBoolean(),
+                    Timestamp = DateTime.Now
+                };
+
+                using var scope = _scopeFactory.CreateScope();
+                var sensorRepo = scope.ServiceProvider.GetRequiredService<ISensorRepository>();
+                await sensorRepo.SaveDeviceStatusAsync(deviceStatus);
+
+                await _hubContext.Clients.All.SendAsync("ReceiveDeviceStatus", deviceStatus);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing device status data");
             }
         }
 
@@ -159,14 +190,17 @@ namespace SmartHomeAutomation.Api.Service
                 Humidity = data.GetProperty("humidity").GetSingle(),
                 Distance = data.GetProperty("distance").GetInt32(),
                 LightLevel = data.GetProperty("lightLevel").GetInt32(),
-                MotionDetected = data.GetProperty("motionDetected").GetBoolean()
+                MotionDetected = data.GetProperty("motionDetected").GetBoolean(),
             };
 
             var deviceStatus = new DeviceStatus
             {
-                DoorStatus = data.GetProperty("doorStatus").GetBoolean(),
-                FanStatus = data.GetProperty("fanStatus").GetBoolean(),
-                LightStatus = data.GetProperty("lightStatus").GetBoolean()
+                // Updated to use property names matching what Arduino sends
+                // Match exactly what's in DeviceStatus.cs
+                DoorStatus = data.GetProperty("DoorStatus").GetBoolean(),
+                FanStatus = data.GetProperty("FanStatus").GetBoolean(),
+                LightStatus = data.GetProperty("LightStatus").GetBoolean(),
+                Timestamp = DateTime.Now
             };
 
             using var scope = _scopeFactory.CreateScope();
@@ -182,8 +216,13 @@ namespace SmartHomeAutomation.Api.Service
         {
             var alertData = new AlertData
             {
+                // Keep this field if your AlertData model has a Type property
+                Type = data.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : "alert",
+
                 AlertType = data.GetProperty("alert_type").GetString(),
-                Message = data.GetProperty("message").GetString()
+                Message = data.GetProperty("message").GetString(),
+                Source = data.TryGetProperty("source", out var sourceElement) ? sourceElement.GetString() : "unknown",
+                Timestamp = DateTime.Now
             };
 
             using var scope = _scopeFactory.CreateScope();
@@ -224,7 +263,8 @@ namespace SmartHomeAutomation.Api.Service
                 {
                     DoorStatus = deviceType == "door" ? action : currentStatus.DoorStatus,
                     FanStatus = deviceType == "fan" ? action : currentStatus.FanStatus,
-                    LightStatus = deviceType == "light" ? action : currentStatus.LightStatus
+                    LightStatus = deviceType == "light" ? action : currentStatus.LightStatus,
+                    Timestamp = DateTime.Now
                 };
 
                 await sensorRepo.SaveDeviceStatusAsync(newStatus);

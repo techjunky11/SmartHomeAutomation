@@ -1,11 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SmartHomeAutomation.Api.Data;
 using SmartHomeAutomation.Api.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartHomeAutomation.Api.Repositories
 {
@@ -49,7 +44,8 @@ namespace SmartHomeAutomation.Api.Repositories
             {
                 // For days, resample to data every 15 minutes
                 return await query
-                    .GroupBy(s => new {
+                    .GroupBy(s => new
+                    {
                         FifteenMin = s.Timestamp.Minute / 15,
                         s.Timestamp.Hour,
                         s.Timestamp.Day,

@@ -11,10 +11,9 @@ namespace SmartHomeAutomation.Api.Models
         public int Id { get; set; }
         public float Temperature { get; set; }
         public float Humidity { get; set; }
-        public int Distance { get; set; }
+        public float Distance { get; set; }
         public int LightLevel { get; set; }
         public bool MotionDetected { get; set; }
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } =DateTime.Now;
     }
-
 }
